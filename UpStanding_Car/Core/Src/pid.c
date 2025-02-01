@@ -4,6 +4,23 @@
 #include "inv_mpu_dmp_motion_driver.h"
 #include "mpu6050.h"
 #include "motor.h"
+//***********************************************************************
+
+//相关状态数据
+float x_pose=0, x_speed, angle_x, gyro_x, angle_z=0, gyro_z, last_angle=0;
+float L_accel, R_accel, velocity_L, velocity_R;
+//LQR状态反馈系数
+float K1=-77.4597, K2=-113.9570, K3=-357.2249, K4=-33.3211, K5=22.3607, K6=22.8301;
+
+//速度换算成PWM占空比的比例系数
+float Ratio_accel=5948;	//5948
+
+//目标状态值
+float Target_x_speed=0, Target_angle_x=0.0349, Target_gyro_z=0;
+int Motor_Left,Motor_Right;                 //电机PWM变量 应是Motor的 向Moto致敬
+
+
+
 
 //传感器数据变量
 int Encoder_Left,Encoder_Right;
@@ -72,12 +89,12 @@ void Control(void)	//每隔10ms调用一次
 {
 	int PWM_out;
 	//1、读取编码器和陀螺仪的数据
-	Encoder_Left=Read_Speed(&htim2);
-	Encoder_Right=-Read_Speed(&htim4);
-	mpu_dmp_get_data(&pitch,&roll,&yaw);
+	Encoder_Left=Read_Speed(&htim2);//读取编码器
+	Encoder_Right=-Read_Speed(&htim4);//大概是原始值
+	mpu_dmp_get_data(&pitch,&roll,&yaw);//这个俯仰角是以直立为中心的
 	MPU_Get_Gyroscope(&gyrox,&gyroy,&gyroz);
 	MPU_Get_Accelerometer(&aacx,&aacy,&aacz);
-	
+	//**************************************感觉遥控部分可以忽视*****************************************************************//
 	//遥控
 	if((Fore==0)&&(Back==0))Target_Speed=0;//未接受到前进后退指令-->速度清零，稳在原地
 	if(Fore==1)
@@ -100,14 +117,117 @@ void Control(void)	//每隔10ms调用一次
 	if((Left==0)&&(Right==0))Turn_Kd=0.6;//若无左右转向指令，则开启转向约束
 	else if((Left==1)||(Right==1))Turn_Kd=0;//若左右转向指令接收到，则去掉转向约束
 	
+	//**************************************感觉遥控部分可以忽视**************************************************************//	
 	
 	//2、将数据传入PID控制器，计算输出结果，即左右电机转速值
 	Velocity_out=Velocity(Target_Speed,Encoder_Left,Encoder_Right);
 	Vertical_out=Vertical(Velocity_out+Med_Angle,roll,gyrox);
 	Turn_out=Turn(gyroz,Target_turn);
-	PWM_out=Vertical_out;
+	PWM_out=Vertical_out;//累加上直立环 更前进速度也有关系
 	MOTO1=PWM_out-Turn_out;
-	MOTO2=PWM_out+Turn_out;
+	MOTO2=PWM_out+Turn_out;//累加上转向PID 对各个轮速有微调
 	Limit(&MOTO1,&MOTO2);
 	Load(MOTO1,MOTO2);
+}
+
+
+
+
+
+/**************************************************************************
+Function: Encoder reading is converted to speed (mm/s)
+Input   : none
+Output  : none
+函数功能：编码器读数转换为速度（mm/s）
+入口参数：无
+返回  值：无
+**************************************************************************/
+float Velocity_Left,Velocity_Right;	//车轮速度(mm/s)
+void Get_Velocity_Form_Encoder(int encoder_left,int encoder_right)
+{ 	
+	float Rotation_Speed_L,Rotation_Speed_R;						//电机转速  转速=编码器读数（5ms每次）*读取频率/倍频数/减速比/编码器精度
+	Rotation_Speed_L = encoder_left*Control_Frequency/EncoderMultiples/Reduction_Ratio/Encoder_precision;
+	Velocity_Left = Rotation_Speed_L*PI*Diameter_67;		//求出编码器速度=转速*周长
+	Rotation_Speed_R = encoder_right*Control_Frequency/EncoderMultiples/Reduction_Ratio/Encoder_precision;
+	Velocity_Right = Rotation_Speed_R*PI*Diameter_67;		//求出编码器速度=转速*周长
+}
+
+//PWM限幅
+//限幅大小6900
+int PWM_Limit(int IN,int max,int min)
+{
+	int OUT = IN;
+	if(OUT>max) OUT = max;
+	if(OUT<min) OUT = min;
+	return OUT;
+}
+void LQR_Control(void)
+{
+	int PWM_out;
+	//1、读取编码器和陀螺仪的数据
+	Encoder_Left=Read_Speed(&htim2);
+	Encoder_Right=-Read_Speed(&htim4);
+	mpu_dmp_get_data(&pitch,&roll,&yaw);
+	MPU_Get_Gyroscope(&gyrox,&gyroy,&gyroz);
+	MPU_Get_Accelerometer(&aacx,&aacy,&aacz);
+	
+	
+		//**************************************感觉遥控部分可以忽视*****************************************************************//
+	//遥控
+//	if((Fore==0)&&(Back==0))Target_Speed=0;//未接受到前进后退指令-->速度清零，稳在原地
+//	if(Fore==1)
+//	{
+//		if(distance<50)
+//			Target_Speed--;
+//		else
+//			Target_Speed++;
+//	}
+//	if(Back==1){Target_Speed--;}//
+//	Target_Speed=Target_Speed>SPEED_Y?SPEED_Y:(Target_Speed<-SPEED_Y?(-SPEED_Y):Target_Speed);//限幅
+//	
+//	/*左右*/
+//	if((Left==0)&&(Right==0))Target_turn=0;
+//	if(Left==1)Target_turn-=30;	//左转
+//	if(Right==1)Target_turn+=30;	//右转
+//	Target_turn=Target_turn>SPEED_Z?SPEED_Z:(Target_turn<-SPEED_Z?(-SPEED_Z):Target_turn);//限幅( (20*100) * 100   )
+//	
+//	/*转向约束*/
+//	if((Left==0)&&(Right==0))Turn_Kd=0.6;//若无左右转向指令，则开启转向约束
+//	else if((Left==1)||(Right==1))Turn_Kd=0;//若左右转向指令接收到，则去掉转向约束
+	
+	//**************************************感觉遥控部分可以忽视**************************************************************//
+	
+	//获取速度(m/s)、位移(m)
+	Get_Velocity_Form_Encoder(Encoder_Left,Encoder_Right);
+	x_speed=(Encoder_Left+Encoder_Right)/2*PI*Diameter_67/1000/(EncoderMultiples*Reduction_Ratio*Encoder_precision)*Control_Frequency;//回归m/s
+	x_pose+=x_speed/Control_Frequency;
+	//获取倾角(rad)、角速度(rad/s)
+	angle_x=roll/180*PI;
+	gyro_x=(angle_x-last_angle)*Control_Frequency;
+	last_angle=angle_x;	
+//	gyro_x=gyrox;
+
+	//获取转向速度(rad/s)、转向角(rad)
+	gyro_z=(Encoder_Right-Encoder_Left)/Wheel_spacing/1000*PI*Diameter_67/1000/1560*Control_Frequency;
+	angle_z+=gyro_z/Control_Frequency;	
+	
+	
+	Target_x_speed = 0;				//平衡速度(m/s)
+	Target_gyro_z = 0;						//平衡转向速度(rad/s)
+	x_pose = 0;	//这个是为了让他稳在原地的
+	K5=0;
+	K6=0;
+		
+	//计算输入变量(LQR控制器)
+	L_accel=-(K1*x_pose+K2*(x_speed-Target_x_speed)+K3*(angle_x-Target_angle_x)+K4*gyro_x+K5*angle_z+K6*(gyro_z-Target_gyro_z));
+	R_accel=-(K1*x_pose+K2*(x_speed-Target_x_speed)+K3*(angle_x-Target_angle_x)+K4*gyro_x-K5*angle_z-K6*(gyro_z-Target_gyro_z));
+	//速度换算成PWM占空比
+	velocity_L=(int)(Ratio_accel*(x_speed+L_accel/Control_Frequency));
+	velocity_R=(int)(Ratio_accel*(x_speed+R_accel/Control_Frequency));
+	//	
+	
+	//限幅 并加载给电机
+	Motor_Left=PWM_Limit(velocity_L,7200,-7200);
+	Motor_Right=PWM_Limit(velocity_R,7200,-7200);	
+	Load(Motor_Left,Motor_Left);
 }
