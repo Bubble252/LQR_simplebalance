@@ -31,3 +31,4 @@ oled\mpu6050.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
 oled\mpu6050.o: ..\MyCode\mpu6050.h
 oled\mpu6050.o: ..\MyCode\IIC.h
 oled\mpu6050.o: d:\Keil_v5\ARM\ARMCC\Bin\..\include\inttypes.h
+oled\mpu6050.o: ../Core/Inc/pid.h

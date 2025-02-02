@@ -107,11 +107,11 @@ int main(void)
   MX_TIM4_Init();
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
-	OLED_Init();
-	OLED_Clear();
+//	OLED_Init();
+//	OLED_Clear();
 	MPU_Init();
 	mpu_dmp_init();
-	OLED_ShowString(0,00,"Init Sucess",16);
+//	OLED_ShowString(0,00,"Init Sucess",16);
 	HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
@@ -120,22 +120,22 @@ int main(void)
 	HAL_TIM_Encoder_Start(&htim4,TIM_CHANNEL_ALL);
 	HAL_UART_Receive_IT(&huart3,rx_buf,1);
 	Load(0,0);
-	OLED_Clear();
+//	OLED_Clear();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-		sprintf((char *)display_buf,"Encoder_L:%d   ",Encoder_Left);
-		OLED_ShowString(0,0,display_buf,16);
-		sprintf((char *)display_buf,"Encoder_R:%d   ",Encoder_Right);
-		OLED_ShowString(0,2,display_buf,16);		
-		sprintf((char *)display_buf,"roll:%.1f   ",roll); 
-		OLED_ShowString(0,4,display_buf,16);
-		GET_Distance();
-		sprintf((char *)display_buf,"distance:%.1f  ",distance);
-		OLED_ShowString(0,6,display_buf,12);
+//		sprintf((char *)display_buf,"Encoder_L:%d   ",Encoder_Left);
+//		OLED_ShowString(0,0,display_buf,16);
+//		sprintf((char *)display_buf,"Encoder_R:%d   ",Encoder_Right);
+//		OLED_ShowString(0,2,display_buf,16);		
+//		sprintf((char *)display_buf,"roll:%.1f   ",roll); 
+//		OLED_ShowString(0,4,display_buf,16);
+//		GET_Distance();
+//		sprintf((char *)display_buf,"distance:%.1f  ",distance);
+//		OLED_ShowString(0,6,display_buf,12);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

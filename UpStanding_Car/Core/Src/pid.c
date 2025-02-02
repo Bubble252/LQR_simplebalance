@@ -9,9 +9,9 @@
 //相关状态数据
 float x_pose=0, x_speed, angle_x, gyro_x, angle_z=0, gyro_z, last_angle=0;
 float L_accel, R_accel, velocity_L, velocity_R;
-//LQR状态反馈系数
-float K1=-77.4597, K2=-113.9570, K3=-357.2249, K4=-33.3211, K5=22.3607, K6=22.8301;
-
+//LQR状态反馈系数 1 位移 2 速度 3 角度 4 角速度
+//float K1=-77.4597, K2=-113.9570, K3=-357.2249, K4=-33.3211, K5=22.3607, K6=22.8301;
+float K1=-31.6228, K2=-60.3097, K3=-700.4016, K4=-6.8960, K5=22.3607, K6=22.8301;
 //速度换算成PWM占空比的比例系数
 float Ratio_accel=5948;	//5948
 
@@ -214,7 +214,7 @@ void LQR_Control(void)
 	
 	Target_x_speed = 0;				//平衡速度(m/s)
 	Target_gyro_z = 0;						//平衡转向速度(rad/s)
-	x_pose = 0;	//这个是为了让他稳在原地的
+//	x_pose = 0;	//这个是为了让他稳在原地的
 	K5=0;
 	K6=0;
 		
